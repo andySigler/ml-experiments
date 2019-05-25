@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="../../css/main.css">
+        <link rel="icon" href="../../img/favicon.ico" type="image/x-icon">
+        <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.1.2/dist/tf.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/p5.js"></script>
+        <script type="text/javascript" src="./js/main.js"></script>
+    </head>
+    <body>
+        <div class="container" id="container">
+            <h1>ML-Experiment #1</h1>
+            <h4>
+                May 26, 2019
+            </h4>
+            <p>
+                As a first experiment with ML, I've made a simple visualization of a DCGAN's ouptut, trained on the MNIST dataset of handwritten numbers.
+            </p>
+            <div id="canvas">
+                <strong class="message" id="message"></strong>
+            </div>
+            <p>
+                I goals for this project where to:
+                <ol>
+                    <li>Create and train a DCGAN from "scratch" in python</li>
+                    <li>Export that trained model to a webpage</li>
+                    <li>Use the model for real-time interaction (of some sort)</li>
+                </ol>
+            </p>
+            <p>
+                <a href="https://github.com/andySigler/ml-experiments/tree/master/experiments/1/python/dcgan.ipynb">The python script use to create and train the DCGAN can be here</a>.
+            </p>
+            <p>
+                The UI for this webpage shows both the DCGAN's input and output values. The green circles represent each of the unique input features (most commonly "noise", but I wanted interaction), and the black circles are the DCGAN's predicted output.
+            </p>
+            <img src="../../img/model.png">
+            <p>
+                This experiment was very useful for me, especially for getting a better intuition of latent space and interacting with generative models.
+            </p>
+        </div>
+    </body>
+</html>

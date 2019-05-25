@@ -1,3 +1,7 @@
+# ignore compiled model data
+# host this somewhere else (not Github)
+experiments/1/data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
