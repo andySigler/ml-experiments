@@ -23,7 +23,7 @@ class FilterBand {
         );
         if (this.output) {
             this.volumes[i] = new Tone.Volume(0);
-            this.volumes[i].volume.value = 0;
+            this.volumes[i].volume.value = -100;
         }
         else {
             this.meters[i] = new Tone.Meter();
@@ -45,9 +45,12 @@ class FilterBand {
         }
     }
   }
-  setBands(newSpectrum) {
+  setBands(newSpectrum, time) {
+    if (time === undefined) {
+        time = 0;
+    }
     for (var i=0, len=this.length; i<len; i++) {
-        this.volumes[i].volume.value = newSpectrum[i];
+        this.volumes[i].volume.linearRampTo(newSpectrum[i], time);
     }
   }
   getBands(minDecibels) {
@@ -56,7 +59,7 @@ class FilterBand {
     }
     var retVal = [];
     for (var i=0, len=this.length; i<len; i++) {
-        retVal[i] = Math.max(this.meters[i].getLevel(), minDecibels);
+        retVal[i] = Math.min(Math.max(this.meters[i].getLevel(), minDecibels), 0);
     }
     return retVal;
   }
@@ -64,12 +67,12 @@ class FilterBand {
 
 
 class Vocoder {
-    constructor(source, modulator, output, options) {
+    constructor(carrier, modulator, pitchDetector, output, options) {
         this.vocoderSetDefaultOptions(options);
         this.frequencies = this.generateFrequencies();
         this.length = this.frequencies.length;
         this.carrier = new FilterBand(
-            source, output, this.frequencies, this.options);
+            carrier, output, this.frequencies, this.options);
         this.modulator = new FilterBand(
             modulator, undefined, this.frequencies, this.options);
         this.isRecording = false;
@@ -77,10 +80,15 @@ class Vocoder {
         this.setCarrierQ();
         this.setModulatorQ();
         this.setGain();
+        this.pitchDetector = pitchDetector;
+        this.pitchChangeCounter = 0;
+        this.pitchChangeInterval = 2;
+        this.pitchRampInterval = this.options.updateInterval;
+        this.pitch = 0;
     }
     update() {
         const spectrum = this.modulator.getBands(this.options.minDecibels);
-        this.carrier.setBands(spectrum);
+        this.carrier.setBands(spectrum, this.options.updateInterval * 0.75);
         return spectrum;
     }
     stop() {
@@ -94,17 +102,21 @@ class Vocoder {
         }
     }
     start(isRecording) {
-        var v = this;
+        var self = this;
         var createUpdateScheduleEvent = function() {
             if (isRecording) {
-                v.recordBuffer = [];
+                self.recordBuffer = [];
                 return function(time) {
-                    v.recordBuffer.push(v.update());
+                    var spectrum = self.update();
+                    self.updatePitch();
+                    spectrum.unshift(self.pitch);
+                    self.recordBuffer.push(spectrum);
                 };
             }
             else {
                 return function(time) {
-                    v.update();
+                    self.update();
+                    self.updatePitch();
                 };
             }
         }
@@ -113,6 +125,19 @@ class Vocoder {
             this.options.updateInterval
         );
         Tone.Transport.start();
+    }
+    updatePitch() {
+        if (this.pitchChangeCounter === 0) {
+            this.pitch = this.pitchDetector.getPitch();
+            if (this.pitch > 0) {
+                this.pitchDetector.oscillator.volume.linearRampTo(1.0, this.pitchRampInterval);
+                this.pitchDetector.oscillator.frequency.linearRampTo(this.pitch / 4, this.pitchRampInterval);
+            }
+            else {
+                this.pitchDetector.oscillator.volume.linearRampTo(0.0, this.pitchRampInterval);
+            }
+        }
+        this.pitchChangeCounter = (this.pitchChangeCounter + 1) % this.pitchChangeInterval;
     }
     setGain(decibels) {
         if (decibels === undefined) decibels = this.options.gain;
@@ -154,13 +179,13 @@ class Vocoder {
     vocoderSetDefaultOptions(options) {
         const vocoderDefaultOptions = {
             gain: 0,
-            updateInterval: 1 / 64,     // seconds (0.015625)
+            updateInterval: 1 / 32,     // seconds (0.015625)
             filterRolloff: -48,         // -12db, -24db, or -48db
-            carrierQ: 10,                 // must be >= 1
-            modulatorQ: 10,                 // must be >= 1
+            carrierQ: 8,                 // must be >= 1
+            modulatorQ: 8,                 // must be >= 1
             maxBands: 32,
             maxFreq: 15000,
-            minDecibels: -100,
+            minDecibels: -100
         };
         if (options === undefined) {
             options = vocoderDefaultOptions;
