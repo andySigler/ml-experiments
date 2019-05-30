@@ -81,63 +81,132 @@ class Vocoder {
         this.setModulatorQ();
         this.setGain();
         this.pitchDetector = pitchDetector;
-        this.pitchChangeCounter = 0;
-        this.pitchChangeInterval = 2;
-        this.pitchRampInterval = this.options.updateInterval;
-        this.pitch = 0;
+        this.dataArray = undefined;
+        this.model = undefined;
     }
-    update() {
+    setCarrierFromModulator() {
+        // use the modulator spectrum to set the carrier filters
         const spectrum = this.modulator.getBands(this.options.minDecibels);
         this.carrier.setBands(spectrum, this.options.updateInterval * 0.75);
         return spectrum;
     }
-    stop() {
-        if (this.eventID >= 0) {
-            Tone.Transport.stop();
-            Tone.Transport.clear(this.eventID);
-            this.eventID = undefined;
+    setCarrierFromData(dataLine) {
+        this.carrier.setBands(dataLine, this.options.updateInterval * 0.75);
+    }
+    getNextPrediction() {
+        var retVal = {
+            pitch: 0,
+            spectrum: []
+        }
+        for (var i=0;i<this.options.maxBands;i++) {
+            retVal.spectrum[i] = -100;
+        }
+        return retVal;
+    }
+    startMP3(isRecording) {
+        this.isRecording = isRecording;
+        var self = this;
+        var createUpdateScheduleEvent = function() {
+            if (self.isRecording) {
+                self.recordBuffer = [];
+                return function() {
+                    const spectrum = self.setCarrierFromModulator();
+                    // for now, I'm always make the 0th element a pitch
+                    // default value is 0 (if not doing any pitch detection)
+                    var pitch = 0;
+                    if (self.pitchDetector) {
+                        pitch = self.pitchDetector.updatePitch();
+                    }
+                    spectrum.unshift(pitch);  // record 32 items
+                    self.recordBuffer.push(spectrum);
+                };
+            }
+            else {
+                return function() {
+                    const spectrum = self.setCarrierFromModulator();
+                    // update the pitch detector
+                    if (self.pitchDetector) self.pitchDetector.updatePitch();
+                };
+            }
+        }
+        this.runEventOnTransport(createUpdateScheduleEvent());
+    }
+    stopMP3() {
+        this.stopTransport();
+        if (this.isRecording) {
+            this.isRecording = false;
             var retVal = this.recordBuffer.slice();
             this.recordBuffer = [];
             return retVal;
         }
     }
-    start(isRecording) {
+    startDataPlayback() {
+        this.currentDataLine = 0;
         var self = this;
         var createUpdateScheduleEvent = function() {
-            if (isRecording) {
-                self.recordBuffer = [];
-                return function(time) {
-                    var spectrum = self.update();
-                    self.updatePitch();
-                    spectrum.unshift(self.pitch);
-                    self.recordBuffer.push(spectrum);
-                };
-            }
-            else {
-                return function(time) {
-                    self.update();
-                    self.updatePitch();
-                };
-            }
+            return function() {
+                const dataLine = self.dataArray[self.currentDataLine];
+                self.setCarrierFromData(dataLine.spectrum);
+                // update the pitch detector
+                if (self.pitchDetector) {
+                    self.pitchDetector.updatePitch(dataLine.pitch);
+                }
+                self.currentDataLine += 1;
+                self.currentDataLine %= self.dataArray.length;
+            };
         }
+        this.runEventOnTransport(createUpdateScheduleEvent());
+    }
+    stopDataPlayback() {
+        this.stopTransport();
+    }
+    startModelPlayback() {
+        var self = this;
+        var createUpdateScheduleEvent = function() {
+            return function() {
+                const dataLine = self.getNextPrediction();
+                self.setCarrierFromData(dataLine.spectrum);
+                // update the pitch detector
+                if (self.pitchDetector) {
+                    self.pitchDetector.updatePitch(dataLine.pitch);
+                }
+            };
+        }
+        this.runEventOnTransport(createUpdateScheduleEvent());
+    }
+    stopModelPlayback() {
+        this.stopTransport();
+    }
+    runEventOnTransport(event) {
+        this.stopTransport();
         this.eventID = Tone.Transport.scheduleRepeat(
-            createUpdateScheduleEvent(),
+            event,
             this.options.updateInterval
         );
         Tone.Transport.start();
     }
-    updatePitch() {
-        if (this.pitchChangeCounter === 0) {
-            this.pitch = this.pitchDetector.getPitch();
-            if (this.pitch > 0) {
-                this.pitchDetector.oscillator.volume.linearRampTo(1.0, this.pitchRampInterval);
-                this.pitchDetector.oscillator.frequency.linearRampTo(this.pitch / 4, this.pitchRampInterval);
-            }
-            else {
-                this.pitchDetector.oscillator.volume.linearRampTo(0.0, this.pitchRampInterval);
-            }
+    stopTransport() {
+        if (this.eventID >= 0) {
+            Tone.Transport.stop();
+            Tone.Transport.clear(this.eventID);
+            this.eventID = undefined;
         }
-        this.pitchChangeCounter = (this.pitchChangeCounter + 1) % this.pitchChangeInterval;
+    }
+    printRecordedTime() {
+        var printString = '';
+        const sampleLength = this.recordBuffer.length;
+        var numMinutes = (sampleLength * this.options.updateInterval) / 60;
+        printString =  String(numMinutes);
+        printString += ' min (';
+        printString += String(sampleLength);
+        printString += ' samples)';
+        console.log(printString);
+    }
+    getRecordedSeconds() {
+        return this.recordBuffer.length * this.options.updateInterval;
+    }
+    getRecordedSamples() {
+        return this.recordBuffer.length;
     }
     setGain(decibels) {
         if (decibels === undefined) decibels = this.options.gain;
@@ -179,11 +248,11 @@ class Vocoder {
     vocoderSetDefaultOptions(options) {
         const vocoderDefaultOptions = {
             gain: 0,
-            updateInterval: 1 / 32,     // seconds (0.015625)
-            filterRolloff: -48,         // -12db, -24db, or -48db
-            carrierQ: 8,                 // must be >= 1
-            modulatorQ: 8,                 // must be >= 1
-            maxBands: 32,
+            updateInterval: 1 / 64, // seconds (0.015625)
+            filterRolloff: -48,     // -12db, -24db, or -48db
+            carrierQ: 8,            // must be >= 1
+            modulatorQ: 8,          // must be >= 1
+            maxBands: 31,           // 0th element is pitch, making 32 total
             maxFreq: 15000,
             minDecibels: -100
         };

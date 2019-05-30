@@ -1,152 +1,114 @@
-function buttonOnOffEvents(button, onCallback, offCallback) {
-    console.log('Create On/Off Button');
-    button.disabled = true;
-    var onString = "Audio is On";
-    var offString = "Audio is Off";
-    var isPoweredOn = false;
-    var context = undefined;
-    button.onEvent = function () {
-        isPoweredOn = true;
-        console.log(onString);
-        button.innerHTML = onString;
-        if (button.recordStopDelayTime > 0) {
-            if (button.offDelay) clearTimeout(button.offDelay);
-            button.offDelay = setTimeout(function() {
-                button.offEvent();
-            }, button.recordStopDelayTime * 1000);
-        }
-        onCallback();
+// function setupAudioPlayback(audio, voiceName, callback) {
+//     // create all audio events for the button
+//     var mp3Button = document.getElementById('mp3Button');
+//     var checkbox = document.getElementById('mp3Record');
+//     var timeoutEventAutoOff = undefined;
+//     var buttonAudioOn = () => {
+//         // ON state
+//         audio.events.on();
+//         // modulator.seek(Math.random() * modulator.fileDuration);
+//         var shouldRecord = checkbox.checked;
+//         audio.vocoder.startMP3(shouldRecord);
+//         if (modulator.fileDuration > 0) {
+//             // automatically turn audio OFF when file's duration has passed
+//             if (timeoutEventAutoOff) clearTimeout(timeoutEventAutoOff);
+//             timeoutEventAutoOff = setTimeout(
+//                 mp3Button.offEvent,  // run full button event, to set it's state
+//                 modulator.fileDuration * 1000
+//             );
+//         }
+//     }
+//     var buttonAudioOff = () => {
+//         // OFF state
+//         if (timeoutEventAutoOff) clearTimeout(timeoutEventAutoOff);
+//         audio.events.off();
+//         var saveData = audio.vocoder.stopMP3();
+//         if (saveData) {
+//             generateCSV(saveData);
+//         }
+//     }
+//     // attach the events to the button
+//     buttonOnOffEvents(mp3Button, buttonAudioOn, buttonAudioOff);
+//     // finally, load in the mp3 file to the Tone.Player
+//     setButtonText(mp3Button, 'Loading');
+//     document.getElementById('voiceName').innerHTML = voiceName;
+//     loadVoice(audio.modulator, voiceName, () => {
+//         mp3Button.offEvent();
+//         if (callback) callback();
+//     });
+// }
+
+function setupDataPlaybackAndTrain(audio, dataName, callback) {
+    var dataButton = document.getElementById('dataButton');
+    var buttonDataOn = () => {
+        audio.events.on();
+        audio.vocoder.startDataPlayback();
     }
-    button.offEvent = function () {
-        isPoweredOn = false;
-        if (button.offDelay) clearTimeout(button.offDelay);
-        console.log(offString);
-        button.innerHTML = offString;
-        offCallback();
+    var buttonDataOff = () => {
+        audio.events.off();
+        audio.vocoder.stopDataPlayback();
     }
-    button.addEventListener('click', function() {
-        if (!isPoweredOn) {
-            if (context === undefined) {
-                context = new AudioContext();
-                context.resume().then(button.onEvent);
-            }
-            else {
-                button.onEvent();
-            }
-        }
-        else {
-            button.offEvent();
-        }
+    buttonOnOffEvents(dataButton, buttonDataOn, buttonDataOff);
+    setButtonText(dataButton, 'Loading');
+    document.getElementById('dataName').innerHTML = dataName;
+    var dataset = loadCSVDataset(dataName);
+    // just take a 1 minute sample, for testing data audio with playback
+    dataset.take(64 * 60).toArray().then((data) => {
+        data = parseRecordedData(data);
+        // save the dataset for playback
+        audio.vocoder.dataArray = data;
+        dataButton.offEvent();
+        if (callback) callback();
     });
-    button.isSetup = true;
+    var trainButton = document.getElementById('trainButton');
+    var buttonTrainOn = () => {
+        // create the model
+        var model = createModel();
+        // train it (monitor)
+        trainModel(model, dataset);
+        // test results using vocoder
+        audio.vocoder.model = model;
+        // reset the button's state when training is done
+        trainButton.offEvent();
+    }
+    var buttonTrainOff = () => {
+    }
+    buttonOnOffEvents(trainButton, buttonTrainOn, buttonTrainOff);
 }
 
-function loadVoice(playerInstance, voiceName, button) {
-    button.offEvent();
-    console.log('loading audio file...');
-    var baseURL = window.location.href;
-    if (baseURL[baseURL.length - 1] !== '/') {
-        baseURL += '/';
+function setupModelPlayback(audio, modelName, callback) {
+    var modelButton = document.getElementById('modelButton');
+    var buttonModelOn = () => {
+        audio.events.on();
+        audio.vocoder.startModelPlayback();
     }
-    var dataFolderURL = baseURL + 'data/';
-    var mp3URL = dataFolderURL + voiceName + '.mp3';
-    button.disabled = true;
-    button.innerHTML = 'Loading...';
-    var buffer = new Tone.Buffer(mp3URL, function() {
-        console.log('Done Loading', mp3URL);
-        playerInstance.buffer = buffer.get();
-        button.recordStopDelayTime = buffer.duration;
-        button.disabled = false;
-        button.innerHTML = 'Audio Loaded';
-        document.getElementById('voiceName').innerHTML = voiceName;
-    }, function(e) {
-        console.log('error loading', mp3URL);
-        console.log(e);
-    });
-}
-
-function setupAudio() {
-
-    var cuttoutFrequency = 1000;
-
-    var noiseSource = new Tone.Noise('white');
-    noiseSource.volume.value = 0;
-    var noiseHighpass = new Tone.Filter(
-        cuttoutFrequency,
-        'highpass',
-        -12             // -12db, -24db, or -48db
-    );
-    noiseSource.connect(noiseHighpass);
-
-    var pulseSource = new Tone.PulseOscillator(0, 0.4);
-    document.getElementById('frequencyRange').addEventListener('input', function(e) {
-        document.getElementById('frequencyDisplay').innerHTML = this.value + 'Hz';
-        pulseSource.frequency.value = this.value;
-    });
-    pulseSource.volume.value = -100;
-    pulseSource.start();
-    // this seems to avoid that crazy noise on load
-    setTimeout(function(){
-        pulseSource.volume.value = 0;
-        pulseSource.stop();
-    }, 1);
-    var pulseLowpass = new Tone.Filter(
-        cuttoutFrequency,
-        'lowpass',
-        -12             // -12db, -24db, or -48db
-    );
-    pulseSource.connect(pulseLowpass);
-
-    var carrier = new Tone.Volume(0);
-    noiseHighpass.connect(carrier);
-    pulseLowpass.connect(carrier);
-    var modulator = new Tone.Player();
-
-    var pitchDetector = new PitchDetector(modulator, pulseSource, 1024, 350);
-
-    var vocoder = new Vocoder(carrier, modulator, pitchDetector, Tone.Master, {
-        gain: 0,
-        updateInterval: 1 / 64,     // seconds (0.015625)
-        filterRolloff: -48,         // -12db, -24db, or -48db
-        carrierQ: 8,               // must be >= 1
-        modulatorQ: 8,             // must be >= 1
-        maxBands: 31,
-        maxFreq: 15000,
-        minDecibels: -100
-    });
-    var button = document.getElementById('button');
-    if (!button.isSetup) {
-        buttonOnOffEvents(button, function() {
-            // ON state
-            noiseSource.start();
-            pulseSource.start();
-            carrier.volume.value = 0;
-            modulator.start();
-            var pitchChangeCounter = 0;
-            var pitchChangeInterval = 2;
-            var pitchRampInterval = 1 / 64;
-            vocoder.start(true);
-        }, function() {
-            // OFF state (called automatically during init)
-            noiseSource.stop();
-            pulseSource.stop();
-            carrier.volume.value = -100;
-            modulator.stop();
-            console.log(vocoder.stop());
-        });
+    var buttonModelOff = () => {
+        audio.events.off();
+        audio.vocoder.stopModelPlayback();
     }
-    loadVoice(modulator, 'david_long', button);
-    return vocoder;
+    buttonOnOffEvents(modelButton, buttonModelOn, buttonModelOff);
+    setButtonText(modelButton, 'Loading');
+    document.getElementById('modelName').innerHTML = modelName;
+    // load the pre-trained model here
+    audio.vocoder.model = undefined;
+    modelButton.offEvent();
+    if (callback) callback();
 }
-
-var vocoder, analyser;
 
 window.addEventListener('load', (event) => {
-    vocoder = setupAudio();
-    vocoder.setGain(20);
+    const dataName = 'david_long_19_5_29_15_40_00';
+    const voiceName = 'david_cropped';
+    const modelName = '';
+    var audio = generateAudioNodes();
+    setupModelPlayback(audio, modelName, () => {
+        console.log('Model Playback Ready');
+        setupDataPlaybackAndTrain(audio, dataName, () => {
+            console.log('Dataset Playback Ready');
+            enableAllButtons();
+            // setupAudioPlayback(audio, voiceName, () => {
+            //     console.log('Audio Playback Ready');
+            //     enableAllButtons();
+            // });
+        });
+    });
 });
-
-function q(newQ) {
-    vocoder.setCarrierQ(newQ);
-    vocoder.setModulatorQ(newQ);
-}

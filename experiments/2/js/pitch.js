@@ -1,19 +1,27 @@
 class PitchDetector {
-    constructor(input, oscillator, numSamples, maxFrequency) {
+    constructor(input, oscillator, options) {
+        options = this.constructOptions(options);
         this.input = input;
         this.oscillator = oscillator;
-        this.length = numSamples;
-        this.maxFrequency = maxFrequency;
+        this.length = options.numSamples;
+        this.maxFrequency = options.maxFrequency;
+        this.minFrequency = options.minFrequency;
         this.lowPassFilter = new Tone.Filter(this.maxFrequency, 'lowpass', -48);
         this.analyser = new Tone.Analyser('waveform', this.length);
         this.input.connect(this.lowPassFilter);
         this.lowPassFilter.connect(this.analyser);
         this.sampleRate = Tone.context.sampleRate;
-        this.maxSamples = Math.floor(this.length/2);
+        this.maxSamples = Math.floor(this.length / 2);
         this.correlations = new Array(this.maxSamples);
-    }
-    setPitch(val) {
-        this.oscillator.volume.linearRampTo(val, )
+        this.maxVolume = options.maxVolume;
+        this.accuracyThresh = 0.95;
+        this.rmsThresh = 0.015;
+        this.pitchRampInterval = options.updateInterval;
+        this.pitchDivider = 2;
+        this.pitch = 0;
+        this.pitchIsOn = true;
+        this.zeroCounter = 0;
+        this.zeroThresh = 2;
     }
     getPitch() {
         var buf = this.analyser.getValue();
@@ -25,10 +33,9 @@ class PitchDetector {
             rms += Math.pow(b, 2);
         });
         rms = Math.sqrt(rms/this.length);
-        if (rms < 0.01) return 0;
+        if (rms < this.rmsThresh) return 0;
         var lastCorrelation = 1;
         var correlation = 0;
-        var GOOD_ENOUGH_CORRELATION = 0.95; // this is the "bar" for how close a correlation needs to be
         for (var offset = 0, len=this.maxSamples; offset < len; offset++) {
             correlation = 0;
             for (var i=0; i<this.maxSamples; i++) {
@@ -36,7 +43,7 @@ class PitchDetector {
             }
             correlation = 1 - (correlation/this.maxSamples);
             this.correlations[offset] = correlation; // store it, for the tweaking we need to do below.
-            if ((correlation>GOOD_ENOUGH_CORRELATION) && (correlation > lastCorrelation)) {
+            if ((correlation>this.accuracyThresh) && (correlation > lastCorrelation)) {
                 foundGoodCorrelation = true;
                 if (correlation > best_correlation) {
                     best_correlation = correlation;
@@ -57,5 +64,55 @@ class PitchDetector {
             return retVal;
         }
         return 0;
+    }
+    updatePitch(newPitch) {
+        if (newPitch !== undefined) {
+            this.pitch = newPitch;
+        }
+        else {
+            this.pitch = this.getPitch();
+        }
+        if (this.pitch > this.minFrequency && this.pitch < this.maxFrequency) {
+            this.pitchIsOn = true;
+            this.oscillator.volume.linearRampTo(this.maxVolume, this.pitchRampInterval);
+            this.oscillator.frequency.linearRampTo(this.pitch / this.pitchDivider, this.pitchRampInterval);
+        }
+        else {
+            this.zeroCounter += 1;
+        }
+        if (this.zeroCounter > this.zeroThresh && this.pitchIsOn) {
+            this.pitchIsOn = false;
+            this.oscillator.volume.linearRampTo(-100, this.pitchRampInterval);
+            this.zeroCounter = 0;
+        }
+        return this.pitch;
+    }
+    constructOptions(options) {
+        var defaultOptions = {
+            maxFrequency: 500,
+            minFrequency: 40,
+            numSamples: 1024,
+            updateInterval: 0.005,
+            maxVolume: 0
+        }
+        if (options === undefined) {
+            options = defaultOptions;
+        }
+        if (options.maxFrequency === undefined) {
+            options.maxFrequency = defaultOptions.maxFrequency;
+        }
+        if (options.minFrequency === undefined) {
+            options.minFrequency = defaultOptions.minFrequency;
+        }
+        if (options.numSamples === undefined) {
+            options.numSamples = defaultOptions.numSamples;
+        }
+        if (options.updateInterval === undefined) {
+            options.updateInterval = defaultOptions.updateInterval;
+        }
+        if (options.maxVolume === undefined) {
+            options.maxVolume = defaultOptions.maxVolume;
+        }
+        return options;
     }
 }
