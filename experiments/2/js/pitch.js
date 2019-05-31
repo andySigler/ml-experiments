@@ -22,6 +22,13 @@ class PitchDetector {
         this.pitchIsOn = true;
         this.zeroCounter = 0;
         this.zeroThresh = 2;
+        this.autoTune = options.autoTune;
+        this.autoTuneFrequencies = [];
+        this.autoTunePitchRampInterval = options.autoTuneUpdateInterval;
+        this.autoTuneNoteIndexHistory = [];
+        this.autoTuneNoteIndexHistorySize = options.autoTuneNoteIndexHistorySize;
+        this.autoTuneStableThresh = options.autoTuneStableThresh;
+        this.generateAutoTuneLookupTable();
     }
     getPitch() {
         var buf = this.analyser.getValue();
@@ -66,16 +73,29 @@ class PitchDetector {
         return 0;
     }
     updatePitch(newPitch) {
-        if (newPitch !== undefined) {
-            this.pitch = newPitch;
+        if (newPitch === undefined) {
+            newPitch = this.getPitch();
+        }
+        if (this.autoTune) {
+            this.pitch = this.applyAutoTune(newPitch);
         }
         else {
-            this.pitch = this.getPitch();
+            this.pitch = newPitch;
         }
         if (this.pitch > this.minFrequency && this.pitch < this.maxFrequency) {
             this.pitchIsOn = true;
-            this.oscillator.volume.linearRampTo(this.maxVolume, this.pitchRampInterval);
-            this.oscillator.frequency.linearRampTo(this.pitch / this.pitchDivider, this.pitchRampInterval);
+            this.oscillator.volume.linearRampTo(
+                this.maxVolume, this.pitchRampInterval);
+            if (this.autoTune) {
+                this.oscillator.frequency.linearRampTo(
+                this.pitch / this.pitchDivider,
+                this.autoTunePitchRampInterval);
+            }
+            else {
+                this.oscillator.frequency.linearRampTo(
+                this.pitch / this.pitchDivider,
+                this.pitchRampInterval);
+            }
         }
         else {
             this.zeroCounter += 1;
@@ -87,13 +107,59 @@ class PitchDetector {
         }
         return this.pitch;
     }
+    generateAutoTuneLookupTable() {
+        const intervals = [0, 3, 5, 7, 10];
+        this.autoTuneFrequencies = [];
+        var frequency, note;
+        for (var oct=0;oct<8;oct++) {
+            for (var int=0;int<intervals.length;int++) {
+                note = (oct * 12) + intervals[int];
+                frequency = Tone.Frequency.mtof(note);
+                this.autoTuneFrequencies.push(frequency);
+            }
+        }
+    }
+    applyAutoTune(newPitch) {
+        var foundNote = 0;
+        for (var i=1,len=this.autoTuneFrequencies.length-1;i<len;i++) {
+            if (newPitch > this.autoTuneFrequencies[i-1]) {
+                if (newPitch < this.autoTuneFrequencies[i+1]) {
+                    foundNote = i;
+                    break;
+                }
+            }
+        }
+        this.autoTuneNoteIndexHistory.push(foundNote);
+        const diff = this.autoTuneNoteIndexHistory.length - this.autoTuneNoteIndexHistorySize;
+        if (diff > 0) {
+            this.autoTuneNoteIndexHistory = this.autoTuneNoteIndexHistory.slice(diff);
+        }
+        var isUnstable = this.autoTuneNoteIndexHistory.reduce((total, value) => {
+            if (value > 0) {
+                return total + (value - foundNote);
+            }
+            else {
+                return total;  // try and ignore the sudden drops to 0hz
+            }
+        }, 0);
+        if (Math.abs(isUnstable) > this.autoTuneStableThresh) {
+            return this.pitch;  // don't change the pitch
+        }
+        else {
+            return this.autoTuneFrequencies[foundNote];
+        }
+    }
     constructOptions(options) {
         var defaultOptions = {
-            maxFrequency: 500,
+            maxFrequency: 350,
             minFrequency: 40,
             numSamples: 1024,
             updateInterval: 0.005,
-            maxVolume: 0
+            maxVolume: -5,
+            autoTune: false,
+            autoTuneUpdateInterval: 0.001,
+            autoTuneNoteIndexHistorySize: 7,
+            autoTuneStableThresh: 2
         }
         if (options === undefined) {
             options = defaultOptions;
@@ -112,6 +178,18 @@ class PitchDetector {
         }
         if (options.maxVolume === undefined) {
             options.maxVolume = defaultOptions.maxVolume;
+        }
+        if (options.autoTune === undefined) {
+            options.autoTune = defaultOptions.autoTune;
+        }
+        if (options.autoTuneUpdateInterval === undefined) {
+            options.autoTuneUpdateInterval = defaultOptions.autoTuneUpdateInterval;
+        }
+        if (options.autoTuneNoteIndexHistorySize === undefined) {
+            options.autoTuneNoteIndexHistorySize = defaultOptions.autoTuneNoteIndexHistorySize;
+        }
+        if (options.autoTuneStableThresh === undefined) {
+            options.autoTuneStableThresh = defaultOptions.autoTuneStableThresh;
         }
         return options;
     }

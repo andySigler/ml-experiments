@@ -61,15 +61,43 @@ function setupDataPlaybackAndTrain(audio, dataName, callback) {
         if (callback) callback();
     });
     var trainButton = document.getElementById('trainButton');
+    const batchesPerEpoch = 32;
+    const trainBatchSize = 32;
+    const trainSeqLength = 32;
+    const inputDataLength = audio.vocoder.length + 1; // includes pitch at 0th
+    const trainDataToShuffle = batchesPerEpoch * trainBatchSize;
+    var parseDataPoint = (element) => {
+        var parsedData = parseRecordedData(element);
+        var arr = parsedData[0].spectrum;
+        arr = arr.map((val) => {
+            return (val + 100.0) / 100.0;
+        });
+        arr.unshift(parsedData[0].pitch / 1000.0);
+        return arr;
+    };
+    var createXData = (batch) => {
+        return batch.slice([0,0], [trainSeqLength, inputDataLength]);
+    };
+    var createYData = (batch) => {
+        return batch.slice([1,0], [trainSeqLength, inputDataLength]);
+    };
+    var xyDataset = dataset.map(parseDataPoint).batch(
+        trainSeqLength + 1, false);
+    xyDataset = tf.data.zip({
+        xs: xyDataset.map(createXData),
+        ys: xyDataset.map(createYData)
+    });
+    var model = createModel(trainSeqLength, inputDataLength);
     var buttonTrainOn = () => {
-        // create the model
-        var model = createModel();
         // train it (monitor)
-        trainModel(model, dataset);
-        // test results using vocoder
-        audio.vocoder.model = model;
-        // reset the button's state when training is done
-        trainButton.offEvent();
+        var trainDataset = xyDataset.shuffle(
+            trainDataToShuffle).batch(trainBatchSize, false);
+        trainModel(model, trainDataset, batchesPerEpoch, () => {
+            // reset the button's state when training is done
+            trainButton.offEvent();
+            // test results using vocoder
+            audio.vocoder.model = model;
+        });
     }
     var buttonTrainOff = () => {
     }
@@ -89,25 +117,26 @@ function setupModelPlayback(audio, modelName, callback) {
     buttonOnOffEvents(modelButton, buttonModelOn, buttonModelOff);
     setButtonText(modelButton, 'Loading');
     document.getElementById('modelName').innerHTML = modelName;
-    // load the pre-trained model here
+    // (TODO) load the pre-trained model here
     audio.vocoder.model = undefined;
     modelButton.offEvent();
     if (callback) callback();
 }
 
+var audio;
+
 window.addEventListener('load', (event) => {
-    const dataName = 'david_long_19_5_29_15_40_00';
-    const voiceName = 'david_cropped';
     const modelName = '';
-    var audio = generateAudioNodes();
+    const dataName = 'david_long_19_5_29_15_40_00';
+    const mp3Name = 'david_cropped';
+    audio = generateAudioNodes();
     setupModelPlayback(audio, modelName, () => {
         console.log('Model Playback Ready');
         setupDataPlaybackAndTrain(audio, dataName, () => {
             console.log('Dataset Playback Ready');
             enableAllButtons();
-            // setupAudioPlayback(audio, voiceName, () => {
+            // setupAudioPlayback(audio, mp3Name, () => {
             //     console.log('Audio Playback Ready');
-            //     enableAllButtons();
             // });
         });
     });

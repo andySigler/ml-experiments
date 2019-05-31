@@ -66,7 +66,15 @@ function loadCSVDataset(filename) {
 }
 
 function parseRecordedData(data) {
+    // tf parses data as an array of objects
+    // where each key in the object is a feature from that sample
+    // filter band features are numbers, labelling the frequency of that filter
+    // this method converts filter band features to an ordered array of numbers
+    // where the array's order is sorted by the filter's frequency
     var orderedKeys = [];
+    if (data.length === undefined) {
+        data = [data];
+    }
     for (var key in data[0]) {
         if (data[0].hasOwnProperty(key) && key !== 'pitch') {
             orderedKeys.push(key);
@@ -85,5 +93,9 @@ function parseRecordedData(data) {
             spectrum: spectrum
         }
     }
+    // {
+    //     pitch: Number,
+    //     spectrum: [Number, Number, ...]
+    // }
     return data;
 }
