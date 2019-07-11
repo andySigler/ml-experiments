@@ -2,10 +2,25 @@ function setButtonText(button, text) {
     button.innerHTML = button.innerHTML.split(' ')[0] + ' ' + text;
 }
 
-function enableAllButtons() {
+function enableAllInputs() {
     var buttons = document.getElementsByTagName('button');
     for (var i=0;i<buttons.length;i++) {
         buttons[i].disabled = false;
+    }
+    var inputs = document.getElementsByTagName('input');
+    for (var i=0;i<inputs.length;i++) {
+        inputs[i].disabled = false;
+    }
+}
+
+function disableAllOtherInputs(el) {
+    var buttons = document.getElementsByTagName('button');
+    for (var i=0;i<buttons.length;i++) {
+        if (el !== buttons[i]) buttons[i].disabled = true;
+    }
+    var inputs = document.getElementsByTagName('input');
+    for (var i=0;i<inputs.length;i++) {
+        if (el !== inputs[i]) inputs[i].disabled = true;
     }
 }
 

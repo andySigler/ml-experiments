@@ -7,6 +7,15 @@ function dataFolder() {
 }
 
 
+function loadModelJSON(modelName, callback) {
+    const modelURL = dataFolder() + 'models/' + modelName + '/model.json';
+    tf.loadLayersModel(modelURL).then((model) => {
+        model.summary();
+        if (callback) callback(model);
+    });
+}
+
+
 function loadVoice(playerInstance, voiceName, callback) {
     console.log('loading audio file...');
     var mp3URL = dataFolder() + voiceName + '.mp3';

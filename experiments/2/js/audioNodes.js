@@ -41,7 +41,7 @@ function generateAudioNodes() {
         carrier,         // carrying audio source
         modulator,       // modulating audio source
         pitchDetector,   // (optional) pitch detect/control
-        Tone.Master            // output audio node
+        Tone.Master      // output audio node
     );
     // I found the vocoder's output needs some gain
     vocoder.setGain(20);

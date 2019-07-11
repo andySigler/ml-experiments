@@ -82,7 +82,16 @@ class Vocoder {
         this.setGain();
         this.pitchDetector = pitchDetector;
         this.dataArray = undefined;
-        this.model = undefined;
+        this.decoder = undefined;
+        this.currentDecoderStep = 0;
+        this.currentDecoderStepThresh = 2;
+        this.currentDecoderSample = 0;
+        this.currentDecoderSampleStep = 1;
+        this.decoderStepAmount = tf.tensor1d([0, 0], 'float32');
+        this.decoderInput = this.decoderStepAmount;
+        this.decoderOutput = undefined;
+        this.decoderInputStep = tf.tensor1d([0, 0], 'float32');
+        this.decoderTarget = this.decoderInput;
     }
     setCarrierFromModulator() {
         // use the modulator spectrum to set the carrier filters
@@ -93,15 +102,17 @@ class Vocoder {
     setCarrierFromData(dataLine) {
         this.carrier.setBands(dataLine, this.options.updateInterval * 0.75);
     }
-    getNextPrediction() {
-        var retVal = {
-            pitch: 0,
-            spectrum: []
+    convertTensorToSample(guess) {
+        if (guess.shape.length == 1) guess = tf.expandDims(guess, 0);
+        else if (guess.shape.length == 3) guess = tf.squeeze(guess, 0);
+        var pitchGuess = guess.slice([0, 0], [1, 1]);
+        pitchGuess = tf.mul(pitchGuess, 1000.0);
+        var spectrumGuess = guess.slice([0, 1], [1, guess.shape[1] - 1]);
+        spectrumGuess = tf.sub(tf.mul(spectrumGuess, 100.0), 100.0);
+        return {
+            pitch: pitchGuess.arraySync()[0][0],
+            spectrum: spectrumGuess.arraySync()[0]
         }
-        for (var i=0;i<this.options.maxBands;i++) {
-            retVal.spectrum[i] = -100;
-        }
-        return retVal;
     }
     startMP3(isRecording) {
         this.isRecording = isRecording;
@@ -160,21 +171,35 @@ class Vocoder {
     stopDataPlayback() {
         this.stopTransport();
     }
-    startModelPlayback() {
-        var self = this;
-        var createUpdateScheduleEvent = function() {
-            return function() {
-                const dataLine = self.getNextPrediction();
-                self.setCarrierFromData(dataLine.spectrum);
-                // update the pitch detector
-                if (self.pitchDetector) {
-                    self.pitchDetector.updatePitch(dataLine.pitch);
-                }
-            };
-        }
-        this.runEventOnTransport(createUpdateScheduleEvent());
+    setTargetLatentState(newTarget) {
+        this.decoderInputStep = tf.div(
+            tf.sub(newTarget, this.decoderInput),
+            this.currentDecoderStepThresh);
+        this.currentDecoderStep = 0;
     }
-    stopModelPlayback() {
+    getTargetLatentState() {
+        return this.decoderTarget.clone();
+    }
+    updateSlidingLatentState() {
+        if (this.currentDecoderStep < this.currentDecoderStepThresh) {
+            this.decoderInput = tf.add(
+                this.decoderInput, this.decoderInputStep);
+            this.decoderOutput = this.decoder.predict(this.decoderInput.expandDims(0));
+            const data = this.convertTensorToSample(this.decoderOutput);
+            this.setCarrierFromData(data.spectrum);
+            if (this.pitchDetector) {
+                this.pitchDetector.updatePitch(data.pitch);
+            }
+            this.currentDecoderStep += 1;
+        }
+    }
+    startDecoderPlayback() {
+        const self = this;
+        this.runEventOnTransport(() => {
+            self.updateSlidingLatentState();
+        });
+    }
+    stopDecoderPlayback() {
         this.stopTransport();
     }
     runEventOnTransport(event) {
@@ -248,7 +273,7 @@ class Vocoder {
     vocoderSetDefaultOptions(options) {
         const vocoderDefaultOptions = {
             gain: 0,
-            updateInterval: 1 / 64, // seconds (0.015625)
+            updateInterval: 1 / 100, // seconds (0.015625)
             filterRolloff: -48,     // -12db, -24db, or -48db
             carrierQ: 8,            // must be >= 1
             modulatorQ: 8,          // must be >= 1
