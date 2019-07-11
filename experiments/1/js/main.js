@@ -8,7 +8,7 @@ var canvasWidth = resolution * imageScale;
 var canvasHeight = resolution * imageScale;
 
 // var modelURL = 'http://localhost:8000/experiments/1/data/model.json';
-var modelURL = 'http://andysigler.com/ml-experiments/experiments/1/data/model.json';
+var modelURL = './data/model.json';
 var nnModel = undefined;
 var firstUpdate = false;
 
