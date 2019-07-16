@@ -1,0 +1,28 @@
+body, html , p{
+    font-family: Helvetica;
+    font-size:14px;
+}
+img {
+    max-width: 100%;
+}
+a {
+    color: #10bf9b;
+}
+.container {
+    max-width: 600px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+.message {
+    display:block;
+    color: grey;
+    margin-bottom:5px;
+}
+
+canvas {
+    border: 1px solid black;
+    border-radius: 5px;
+    max-width: 100%;
+    height: auto;
+}
