@@ -1,6 +1,14 @@
-import * as tf from '@tensorflow/tfjs'
+import { data as tfData } from '@tensorflow/tfjs'
+import * as JSZip from 'jszip' // eslint-disable-line no-unused-vars
+import { saveAs } from 'file-saver' // eslint-disable-line no-unused-vars
 
-import { getFilePaths } from './datasetPaths.js'
+// const zip = new JSZip()
+// zip.file('Hello.txt', 'Hello World\n')
+// zip.generateAsync({ type: 'blob' }).then((content) => {
+//   saveAs(content, 'example.zip')
+// })
+
+import { getFilePaths } from './dataPaths.js'
 
 export const loadDatasets = () => {
   const dataPaths = getFilePaths()
@@ -8,7 +16,7 @@ export const loadDatasets = () => {
   console.log(`Reading in ${dataPaths.length} training datasets`)
   for (const path of dataPaths) {
     console.log(`\tReading in ${path}`)
-    accumulatedDatasets.push(tf.data.csv(path, {
+    accumulatedDatasets.push(tfData.csv(path, {
       hasHeader: false,
       columnNames: ['t', 'x', 'y']
     }))

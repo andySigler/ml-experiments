@@ -31,6 +31,8 @@
   "dependencies": {
     "@tensorflow/tfjs": "^1.2.2",
     "babel-polyfill": "^6.26.0",
+    "file-saver": "^2.0.2",
+    "jszip": "^3.2.2",
     "p5": "^0.9.0"
   }
 }
