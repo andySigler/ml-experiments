@@ -8,6 +8,9 @@ img {
 a {
     color: #10bf9b;
 }
+button {
+    font-size: 200%;
+}
 .container {
     max-width: 600px;
     width: 100%;
