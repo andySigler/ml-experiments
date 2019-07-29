@@ -8,18 +8,40 @@
     <body>
         <div class="container">
             <h1>ML-Experiment #3</h1>
-            <div id="generate">
+            <!-- <div id="generate">
                 <h2>Generate Data</h2>
                 <button id="saveButton">Save</button>
                 <button id="clearButton">Clear</button>
                 <div id="canvasParent"></div>
                 <h3>Links to CSV Data</h3>
                 <div id="fileLinks"></div>
+            </div> -->
+            <div>
+                <span id="decodingMessage"></span>
+            </div>
+            <div id="mdn">
+                <h2>MDN Playback</h2>
+                <div>
+                    <button id="startMDNButton" disabled="true">Predict</button>
+                    <button id="stopMDNButton" disabled="true">Stop</button>
+                </div>
+                <div id="canvasParent"></div>
+            </div>
+            <div id="simpleRNN">
+                <h2>Simple RNN</h2>
+                <div>
+                    <button id="startModelButton" disabled="true">Predict</button>
+                    <button id="stopModelButton" disabled="true">Stop</button>
+                </div>
+                <div id="canvasParent"></div>
             </div>
             <div id="playback">
                 <h2>Playback Data</h2>
-                <button id="startPlaybackButton">Start</button>
-                <button id="stopPlaybackButton">Stop</button>
+                <div>
+                    <button id="startPlaybackButton" disabled="true">Random</button>
+                    <span id="playbackLength"></span>
+                    <button id="stopPlaybackButton" disabled="true">Stop</button>
+                </div>
                 <div id="canvasParent"></div>
             </div>
         </div>

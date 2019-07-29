@@ -33,6 +33,7 @@
     "babel-polyfill": "^6.26.0",
     "file-saver": "^2.0.2",
     "jszip": "^3.2.2",
+    "multivariate-normal": "^0.1.1",
     "p5": "^0.9.0"
   }
 }

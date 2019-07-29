@@ -6,14 +6,15 @@ export const setupCanvas = (s, parentName, width, height) => {
   return canvas.elt
 }
 
-export const drawLine = (s, x1, y1, x2, y2) => {
-  s.stroke(0)
+export const drawLine = (s, x1, y1, x2, y2, color) => {
+  if (color === undefined) s.stroke(0)
+  else s.stroke(color)
   s.strokeWeight(1)
   s.line(x1, y1, x2, y2)
 }
 
-export const drawLineRelative = (s, x1, y1, x2, y2) => {
-  drawLine(s, x1 * s.width, y1 * s.height, x2 * s.width, y2 * s.height)
+export const drawLineRelative = (s, x1, y1, x2, y2, color) => {
+  drawLine(s, x1 * s.width, y1 * s.height, x2 * s.width, y2 * s.height, color)
 }
 
 export const clearCanvas = (s) => {

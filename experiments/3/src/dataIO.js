@@ -10,19 +10,44 @@ import { saveAs } from 'file-saver' // eslint-disable-line no-unused-vars
 
 import { getFilePaths } from './dataPaths.js'
 
-export const loadDatasets = () => {
+const decodeCSVDatasets = (datasetArray, onEach, onFinished) => {
+  const decodeDataset = (index, dArray, newArray) => {
+    onEach(index)
+    dArray[index].toArray().then(d => {
+      newArray.push(d)
+      if (index < dArray.length - 1) {
+        decodeDataset(index + 1, dArray, newArray)
+      } else {
+        onFinished(newArray)
+      }
+    })
+  }
+  decodeDataset(0, datasetArray, [])
+}
+
+export const loadDatasets = (msgDOMNode, onFinished) => {
   const dataPaths = getFilePaths()
   const accumulatedDatasets = []
   console.log(`Reading in ${dataPaths.length} training datasets`)
   for (const path of dataPaths) {
-    console.log(`\tReading in ${path}`)
     accumulatedDatasets.push(tfData.csv(path, {
       hasHeader: false,
       columnNames: ['t', 'x', 'y']
     }))
   }
-  console.log(`Loaded ${accumulatedDatasets.length} training datasets`)
-  return accumulatedDatasets
+  const onEachDecode = index => {
+    const msg = `Decoding ${index}/${accumulatedDatasets.length} datasets...`
+    if (index % 3 === 0) {
+      msgDOMNode.innerHTML = msg
+      console.log(msg)
+    }
+  }
+  decodeCSVDatasets(accumulatedDatasets, onEachDecode, dataArrays => {
+    const msg = `Done decoding ${dataArrays.length} training datasets`
+    msgDOMNode.innerHTML = msg
+    console.log(msg)
+    onFinished(dataArrays)
+  })
 }
 
 export const exportSavedData = (data, parentNode) => {

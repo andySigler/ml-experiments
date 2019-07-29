@@ -7,9 +7,18 @@ import { setupCanvas, clearCanvas, drawLineRelative } from './drawing.js'
 const createButtonEvents = (s, parentNode, datasetArray) => {
   const startButton = parentNode.querySelector('#startPlaybackButton')
   const stopButton = parentNode.querySelector('#stopPlaybackButton')
+  const lengthSpan = parentNode.querySelector('#playbackLength')
   let timeoutRef // referenced by both start and stop functions
-  startButton.addEventListener('click', () => {
-    if (timeoutRef) return
+  const stopButtonEvent = () => {
+    if (timeoutRef) {
+      clearTimeout(timeoutRef)
+      timeoutRef = undefined
+      lengthSpan.innerHTML = ''
+      clearCanvas(s)
+    }
+  }
+  const startButtonEvent = () => {
+    stopButtonEvent()
     // recursive function, generates a timeout from the time from data
     // then draws a line from the previous point to the current point
     const genTimeout = (dataArray, index) => {
@@ -26,17 +35,17 @@ const createButtonEvents = (s, parentNode, datasetArray) => {
     const startRandomPlayback = () => {
       clearCanvas(s)
       const i = Math.floor(Math.random() * datasetArray.length)
-      datasetArray[i].toArray().then(dataArray => genTimeout(dataArray, 1))
+      const dataArray = datasetArray[i]
+      lengthSpan.innerHTML = dataArray.length + ' points'
+      genTimeout(dataArray, 1)
     }
     // trigger
     startRandomPlayback()
-  })
-  stopButton.addEventListener('click', () => {
-    if (timeoutRef) {
-      clearTimeout(timeoutRef)
-      timeoutRef = undefined
-    }
-  })
+  }
+  startButton.addEventListener('click', startButtonEvent)
+  stopButton.addEventListener('click', stopButtonEvent)
+  startButton.disabled = false
+  stopButton.disabled = false
 }
 
 export const setupDataPlayback = (datasetArray) => {
