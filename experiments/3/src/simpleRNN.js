@@ -94,7 +94,6 @@ const createButtonEvents = (s, parentNode, datasetArray, model) => {
       predictLineFromSeed(model, seed).then(newPoint => {
         if (newPoint.x > 1 || newPoint.x < 0 || newPoint.y > 1 || newPoint.y < 0) {
           stopButtonEvent()
-          startModelPrediction()
         } else {
           seed.push(newPoint)
           const [prev, curr] = [seed[seed.length - 2], seed[seed.length - 1]]
@@ -107,8 +106,12 @@ const createButtonEvents = (s, parentNode, datasetArray, model) => {
     // recursive timout function above
     const startModelPrediction = () => {
       clearCanvas(s)
-      const i = Math.floor(Math.random() * datasetArray.length)
-      const modelSeed = datasetArray[i].slice(0, modelSeqLen + 1)
+      let i = Math.floor(Math.random() * datasetArray.length)
+      while (datasetArray[i].length < modelSeqLen + 1) {
+        i = Math.floor(Math.random() * datasetArray.length)
+      }
+      const n = Math.floor(Math.random() * (datasetArray[i].length - (modelSeqLen + 1)))
+      const modelSeed = datasetArray[i].slice(n, n + modelSeqLen + 1)
       predictNewLine(modelSeed)
     }
     // trigger
@@ -125,6 +128,7 @@ export const setupSimpleRNNPlayback = (datasetArray) => {
   new P5((sketch) => { // eslint-disable-line no-new
     sketch.setup = () => { // will be called automatically
       const modelDiv = document.getElementById('simpleRNN')
+      modelDiv.hidden = false
       const modelCanvasParent = modelDiv.querySelector('#canvasParent')
       setupCanvas(sketch, modelCanvasParent, 500, 500)
       loadSimpleRNNModel().then(model => {

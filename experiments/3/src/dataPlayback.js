@@ -7,13 +7,11 @@ import { setupCanvas, clearCanvas, drawLineRelative } from './drawing.js'
 const createButtonEvents = (s, parentNode, datasetArray) => {
   const startButton = parentNode.querySelector('#startPlaybackButton')
   const stopButton = parentNode.querySelector('#stopPlaybackButton')
-  const lengthSpan = parentNode.querySelector('#playbackLength')
   let timeoutRef // referenced by both start and stop functions
   const stopButtonEvent = () => {
     if (timeoutRef) {
       clearTimeout(timeoutRef)
       timeoutRef = undefined
-      lengthSpan.innerHTML = ''
       clearCanvas(s)
     }
   }
@@ -27,7 +25,7 @@ const createButtonEvents = (s, parentNode, datasetArray) => {
         drawLineRelative(s, prev.x, prev.y, curr.x, curr.y)
         index += 1
         if (index < dataArray.length) genTimeout(dataArray, index)
-        else startRandomPlayback()
+        else stopButtonEvent()
       }, curr.t - prev.t)
     }
     // picks a random datasets, converts to array, then triggers the
@@ -36,7 +34,6 @@ const createButtonEvents = (s, parentNode, datasetArray) => {
       clearCanvas(s)
       const i = Math.floor(Math.random() * datasetArray.length)
       const dataArray = datasetArray[i]
-      lengthSpan.innerHTML = dataArray.length + ' points'
       genTimeout(dataArray, 1)
     }
     // trigger
@@ -52,6 +49,7 @@ export const setupDataPlayback = (datasetArray) => {
   new P5((sketch) => { // eslint-disable-line no-new
     sketch.setup = () => { // will be called automatically
       const playbackDiv = document.getElementById('playback')
+      playbackDiv.hidden = false
       const playbackCanvasParent = playbackDiv.querySelector('#canvasParent')
       setupCanvas(
         sketch, playbackCanvasParent, 500, 500)

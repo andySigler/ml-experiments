@@ -19,15 +19,17 @@
             <div>
                 <span id="decodingMessage"></span>
             </div>
-            <div id="mdn">
+            <div id="mdn" hidden="true">
                 <h2>MDN Playback</h2>
                 <div>
                     <button id="startMDNButton" disabled="true">Predict</button>
                     <button id="stopMDNButton" disabled="true">Stop</button>
+                    Temp<input type="text" id="tempInput" value="1.0">
+                    Sigma-Temp<input type="text" id="sigmaTempInput" value="0.02">
                 </div>
                 <div id="canvasParent"></div>
             </div>
-            <div id="simpleRNN">
+            <div id="simpleRNN" hidden="true">
                 <h2>Simple RNN</h2>
                 <div>
                     <button id="startModelButton" disabled="true">Predict</button>
@@ -35,11 +37,10 @@
                 </div>
                 <div id="canvasParent"></div>
             </div>
-            <div id="playback">
+            <div id="playback" hidden="true">
                 <h2>Playback Data</h2>
                 <div>
                     <button id="startPlaybackButton" disabled="true">Random</button>
-                    <span id="playbackLength"></span>
                     <button id="stopPlaybackButton" disabled="true">Stop</button>
                 </div>
                 <div id="canvasParent"></div>

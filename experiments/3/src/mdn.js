@@ -6,8 +6,9 @@ import P5 from 'p5'
 import { getMDNPath } from './dataPaths.js'
 import { setupCanvas, clearCanvas, drawLineRelative } from './drawing.js'
 
-const mdnSeqLen = 32
-const mdnNumMixes = 8
+const mdnSeqLen = 8
+const mdnSampleLen = 16
+const mdnNumMixes = 16
 
 const splitMixtureParams = (params, outputDim, numMixes) => {
   /*
@@ -166,39 +167,49 @@ const loadMDNModel = async () => {
   return model
 }
 
-const generateRandomMDNInput = (drawingsArray) => {
+const getRandomSeed = (drawingsArray) => {
+  // find a drawing that is long enough
   let randomDrawingIndex = Math.floor((Math.random() * drawingsArray.length))
-  while (drawingsArray[randomDrawingIndex].length <= (mdnSeqLen + 1)) {
+  const neededSamples = (mdnSampleLen * mdnSeqLen) + 1
+  while (drawingsArray[randomDrawingIndex].length <= neededSamples) {
     randomDrawingIndex = Math.floor((Math.random() * drawingsArray.length))
   }
   const drawing = drawingsArray[randomDrawingIndex]
+  // pick a random start point within that drawing
   const randomSequenceIndex = Math.floor(
-    (Math.random() * (drawing.length - (mdnSeqLen + 1)))
+    (Math.random() * (drawing.length - neededSamples))
   )
   const points = drawing.slice(
-    randomSequenceIndex, randomSequenceIndex + (mdnSeqLen + 1))
+    randomSequenceIndex, randomSequenceIndex + neededSamples)
+  return points
+}
+
+const pointsToMDNInput = (points) => {
+  // convert the point objects to a flattened array with rel and abs values
   const pointsArray = points.map((p, i) => {
     if (i === 0) return undefined
     const relX = p.x - points[i - 1].x
     const relY = p.y - points[i - 1].y
     return [relX, relY, p.x, p.y]
   }).slice(1)
-  return pointsArray.flat(Infinity)
+  const flattenedPointsArray = pointsArray.flat(Infinity)
+  // divide the flattened array into an array of sub-sequences, for the RNN
+  const rnnPoints = []
+  const valuesPerSequence = mdnSampleLen * 4
+  for (let i = 0; i < mdnSeqLen; i++) {
+    const start = i * valuesPerSequence
+    const end = start + valuesPerSequence
+    rnnPoints.push(flattenedPointsArray.slice(start, end))
+  }
+  return rnnPoints
 }
 
 const addAbsPointsToOutput = (relOutput, absInput) => {
-  const firstInputPoint = absInput.slice(0, 4)
-  const firstAbsPoint = [
-    firstInputPoint[2] - firstInputPoint[0],
-    firstInputPoint[3] - firstInputPoint[1]
-  ]
-  const absOutput = [
-    relOutput[0],
-    relOutput[1],
-    firstAbsPoint[0] + relOutput[0],
-    firstAbsPoint[1] + relOutput[1]
-  ]
-  for (let i = 2; i < relOutput.length; i += 2) {
+  // get the final absolute position from the input RNN sequences
+  const lastRnnSeq = absInput[absInput.length - 1]
+  const absOutput = lastRnnSeq.slice(lastRnnSeq.length - 4)
+  // continue on, adding absolute points to the rest of the relative points
+  for (let i = 0; i < relOutput.length; i += 2) {
     const absX = absOutput[absOutput.length - 2] + relOutput[i]
     const absY = absOutput[absOutput.length - 1] + relOutput[i + 1]
     absOutput.push(relOutput[i])
@@ -212,7 +223,7 @@ const addAbsPointsToOutput = (relOutput, absInput) => {
 const mdnOutputToPoints = outputArray => {
   const points = []
   let fakeMillisCounter = 0
-  const fakeMillisStep = 50
+  const fakeMillisStep = 5
   for (let i = 2; i < outputArray.length; i += 4) {
     points.push({
       t: fakeMillisCounter,
@@ -224,39 +235,91 @@ const mdnOutputToPoints = outputArray => {
   return points
 }
 
-const predictMDN = (model, seed) => {
+const predictMDN = (model, seed, temp, sigmaTemp) => {
   return tf.tidy(() => {
-    const seedTensor = tf.tensor2d(seed, [1, mdnSeqLen * 4], 'float32')
+    const seedTensor = tf.tensor3d(
+      [seed], [1, mdnSeqLen, mdnSampleLen * 4], 'float32')
     const guess = model.predict(seedTensor)
     const guessArray = tf.squeeze(guess).arraySync()
-    const mdnOutput = sampleMDNOutput(guessArray, mdnSeqLen * 2, mdnNumMixes)
+    const mdnOutput = sampleMDNOutput(
+      guessArray, mdnSampleLen * 2, mdnNumMixes, temp, sigmaTemp)
     return addAbsPointsToOutput(mdnOutput, seed)
+  })
+}
+
+const drawLineAtIndex = (s, i, pointArray, color = 'black') => {
+  const prev = pointArray[i - 1]
+  const curr = pointArray[i]
+  drawLineRelative(s, prev.x, prev.y, curr.x, curr.y, color)
+  if (curr.x < 0 || curr.x > 1 || curr.y < 0 || curr.y > 1) {
+    return false
+  } else {
+    return true
+  }
+}
+
+const drawPointsArrayAsync = (s, pointArray, color = 'black', keepDrawing) => {
+  return new Promise((resolve, reject) => {
+    const recurseThroughPoints = (i) => {
+      if (!keepDrawing) reject(new Error('Told to stop'))
+      else if (drawLineAtIndex(s, i, pointArray, color)) {
+        i += 1
+        if (i < pointArray.length) {
+          setTimeout(() => recurseThroughPoints(i), pointArray[i].t)
+        } else {
+          resolve(true)
+        }
+      } else {
+        resolve(false)
+      }
+    }
+    recurseThroughPoints(1)
   })
 }
 
 const createButtonEvents = (s, parentNode, datasetArray, model) => {
   const startButton = parentNode.querySelector('#startMDNButton')
   const stopButton = parentNode.querySelector('#stopMDNButton')
+  const tempInput = parentNode.querySelector('#tempInput')
+  const sigmaTempInput = parentNode.querySelector('#sigmaTempInput')
+  let timeoutRef
+  let currentlyDrawing = false
   const stopButtonEvent = () => {
-    //
+    if (currentlyDrawing) {
+      clearTimeout(timeoutRef)
+      timeoutRef = undefined
+      tempInput.disabled = false
+      sigmaTempInput.disabled = false
+      currentlyDrawing = false
+    }
   }
   const startButtonEvent = () => {
-    const startModelPrediction = () => {
-      clearCanvas(s)
-      const mdnInput = generateRandomMDNInput(datasetArray)
-      const mdnOutput = predictMDN(model, mdnInput)
-      const seedPointsToDraw = mdnOutputToPoints(mdnInput)
+    const temp = tempInput.value
+    const sigmaTemp = sigmaTempInput.value
+    tempInput.disabled = true
+    sigmaTempInput.disabled = true
+
+    const predictNextSequence = async (seed) => {
+      const mdnOutput = predictMDN(model, seed, temp, sigmaTemp)
+      const newSeed = seed.slice(1)
+      // remove the artifically added first point, then append to seed
+      newSeed.push(mdnOutput.slice(4))
       const pointsToDraw = mdnOutputToPoints(mdnOutput)
-      for (let i = 1; i < seedPointsToDraw.length; i++) {
-        const prev = seedPointsToDraw[i - 1]
-        const curr = seedPointsToDraw[i]
-        drawLineRelative(s, prev.x, prev.y, curr.x, curr.y)
+      const stillOnScreen = await drawPointsArrayAsync(
+        s, pointsToDraw, 'black', currentlyDrawing)
+      if (!stillOnScreen) {
+        stopButtonEvent()
+      } else {
+        timeoutRef = setTimeout(() => { predictNextSequence(newSeed) }, 50)
       }
-      for (let i = 1; i < pointsToDraw.length; i++) {
-        const prev = pointsToDraw[i - 1]
-        const curr = pointsToDraw[i]
-        drawLineRelative(s, prev.x, prev.y, curr.x, curr.y, 'red')
-      }
+    }
+
+    const startModelPrediction = () => {
+      currentlyDrawing = true
+      clearCanvas(s)
+      const randomPoints = getRandomSeed(datasetArray)
+      const mdnInput = pointsToMDNInput(randomPoints)
+      predictNextSequence(mdnInput)
     }
     // trigger
     stopButtonEvent()
@@ -272,6 +335,7 @@ export const setupMDNPlayback = (datasetArray) => {
   new P5((sketch) => { // eslint-disable-line no-new
     sketch.setup = () => { // will be called automatically
       const mdnDiv = document.getElementById('mdn')
+      mdnDiv.hidden = false
       const mdnCanvasParent = mdnDiv.querySelector('#canvasParent')
       setupCanvas(sketch, mdnCanvasParent, 500, 500)
       loadMDNModel().then(model => {

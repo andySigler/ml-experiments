@@ -28,7 +28,9 @@ const decodeCSVDatasets = (datasetArray, onEach, onFinished) => {
 export const loadDatasets = (msgDOMNode, onFinished) => {
   const dataPaths = getFilePaths()
   const accumulatedDatasets = []
-  console.log(`Reading in ${dataPaths.length} training datasets`)
+  const msg = `Loading ${dataPaths.length} training drawings, please wait...`
+  console.log(msg)
+  msgDOMNode.innerHTML = (msg + '<br>')
   for (const path of dataPaths) {
     accumulatedDatasets.push(tfData.csv(path, {
       hasHeader: false,
@@ -36,14 +38,14 @@ export const loadDatasets = (msgDOMNode, onFinished) => {
     }))
   }
   const onEachDecode = index => {
-    const msg = `Decoding ${index}/${accumulatedDatasets.length} datasets...`
-    if (index % 3 === 0) {
-      msgDOMNode.innerHTML = msg
+    const msg = ` - Loading ${index}/${accumulatedDatasets.length} drawings...`
+    if (index % 5 === 0) {
+      msgDOMNode.innerHTML += ('<br>' + msg)
       console.log(msg)
     }
   }
   decodeCSVDatasets(accumulatedDatasets, onEachDecode, dataArrays => {
-    const msg = `Done decoding ${dataArrays.length} training datasets`
+    const msg = `Done loading ${dataArrays.length} drawings`
     msgDOMNode.innerHTML = msg
     console.log(msg)
     onFinished(dataArrays)

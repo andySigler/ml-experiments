@@ -11,6 +11,11 @@ a {
 button {
     font-size: 200%;
 }
+input {
+    max-width: 40px;
+    margin-left:3px;
+    margin-right: 10px
+}
 .container {
     max-width: 600px;
     width: 100%;
