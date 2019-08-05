@@ -7,7 +7,7 @@
     </head>
     <body>
         <div class="container">
-            <h1>ML-Experiment #3</h1>
+            <h1>ML-Experiment: My Doodling Style</h1>
             <!-- <div id="generate">
                 <h2>Generate Data</h2>
                 <button id="saveButton">Save</button>
@@ -20,7 +20,7 @@
                 <span id="decodingMessage"></span>
             </div>
             <div id="mdn" hidden="true">
-                <h2>MDN Playback</h2>
+                <h2>Model Playback</h2>
                 <div>
                     <button id="startMDNButton" disabled="true">Predict</button>
                     <button id="stopMDNButton" disabled="true">Stop</button>
@@ -29,21 +29,98 @@
                 </div>
                 <div id="canvasParent"></div>
             </div>
-            <div id="simpleRNN" hidden="true">
+<!--             <div id="simpleRNN" hidden="true">
                 <h2>Simple RNN</h2>
                 <div>
                     <button id="startModelButton" disabled="true">Predict</button>
                     <button id="stopModelButton" disabled="true">Stop</button>
                 </div>
                 <div id="canvasParent"></div>
+            </div> -->
+            <div>
+                <h2>The Goal</h2>
+                <p>
+                    I wanted to make a system that can copy how I doodle in my notebooks. Below are some pictures from my notebooks over the years, showing how I doodle.
+                </p>
+                <img src="./img/my_doodles.jpg">
+                <p>
+                    You'll notice that, generally, I draw random lines, and I try not to overlap those lines. There are also some common angles and shapes that I subconsciously make.
+                </p>
+                <p>
+                    I've made small programs in the past that try to achieve this programmatically, however it always looked a little too robotic.
+                </p>
             </div>
-            <div id="playback" hidden="true">
-                <h2>Playback Data</h2>
-                <div>
-                    <button id="startPlaybackButton" disabled="true">Random</button>
-                    <button id="stopPlaybackButton" disabled="true">Stop</button>
+            <div>
+                <h2>Getting Some Data</h2>
+                <p>
+                    To start with, I needed to create a system for recording my doodling style. I created a program that records my drawings in an HTML5 Canvas, and then drew for a couple hours while listening to podcasts.
+                </p>
+                <p>
+                    You can see some of my drawings below. Press the "Random" button to see one of my doodles being drawn.
+                </p>
+                <div id="playback" hidden="true">
+                    <!-- <h2>Train Data Playback</h2> -->
+                    <div>
+                        <button id="startPlaybackButton" disabled="true">Random</button>
+                        <button id="stopPlaybackButton" disabled="true">Stop</button>
+                    </div>
+                    <div id="canvasParent"></div>
                 </div>
-                <div id="canvasParent"></div>
+            </div>
+            <div>
+                <h2>Training the Model</h2>
+                <p>
+                    I used a Python notebook to train the models using Tensorflow 2.0-beta.
+                </p>
+                <p>
+                    The training data (my drawings) were loaded and sent through the following processes:
+                    <ol>
+                        <li>
+                            Compress total points, to keep same shape with less data
+                            <ul>
+                                <li style="margin-top: 5px">This allowed me to keep the final model as small as possible, while still being able to generate recognizable shapes</li>
+                            </ul>
+                        </li>
+                        <li style="margin-top: 5px">
+                            Synthetically create new drawings (more data!), through:
+                            <ul>
+                                <li style="margin-top: 5px">Rotating each drawing four times at 90 degrees</li>
+                                <li style="margin-top: 5px">Scaling each drawing down in size and transposing</li>
+                            </ul>
+                        </li>
+                        <li style="margin-top: 5px">
+                            Creating training X/Y pairs, for both the simple autoencoders, and the RNN models
+                        </li>
+                    </ol>
+                </p>
+                <p>
+                    The final model is a combination of three sequential models:
+                    <ol>
+                        <li>Convolutional Encoder</li>
+                        <li>LSTM</li>
+                        <li>Mixture Density Network</li>
+                    </ol>
+                </p>
+                <p>
+                    In the diagram below, I tried to demonstrate the sequence of how I trained each model independently. Training each sub-model separately seemed to help the training process learn faster and more accurately than training end-to-end.
+                </p>
+                <div>
+                    <img src="./img/doodle_model_diagram.jpg">
+                </div>
+            </div>
+            <div>
+                <h2>Did It Work?</h2>
+                <p>
+                    Not really, but I can say that after working on this model for a couple weeks, I learned quite a lot about how to make it work better.
+                </p>
+                <p>
+                    I think some things that could make it better are:
+                    <ul>
+                        <li>Using training drawings that are <strong>NOT</strong> just my random doodles. Random doodles are hard for me (a human) to tell apart from just noise when a ML model is generating them...</li>
+                        <li>More training time. After I was about to give up, I found that if I simply train the final MDN-RNN network longs, it started looking better</li>
+                    </ul>
+                </p>
+                <br><br><br>
             </div>
         </div>
     </body>

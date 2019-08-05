@@ -33,6 +33,7 @@ export const setupCreateData = () => {
       const drawnData = emptyDataArray()
       // setup the canvas
       const generateDiv = document.getElementById('generate')
+      generateDiv.hidden = false
       const generateCanvasParent = generateDiv.querySelector('#canvasParent')
       const canvas = setupCanvas(
         sketch, generateCanvasParent, 500, 500)

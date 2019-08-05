@@ -12,7 +12,6 @@ const createButtonEvents = (s, parentNode, datasetArray) => {
     if (timeoutRef) {
       clearTimeout(timeoutRef)
       timeoutRef = undefined
-      clearCanvas(s)
     }
   }
   const startButtonEvent = () => {
