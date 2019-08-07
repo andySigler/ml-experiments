@@ -19,24 +19,37 @@
             <div>
                 <span id="decodingMessage"></span>
             </div>
+            <div>
+                <h2>There Are No Failures</h2>
+                <p>
+                    Below is a Tensorflow project I worked on for a couple weeks. The final output is not impressive (I think)... however I did a few things for my very first time which I think are worth documenting:
+                </p>
+                <ul>
+                    <li>Used a mixture density network (MDN) to recreate "real-world" samples</li>
+                    <li><a href="https://github.com/andySigler/keras-mdn-layer">Forked an open-source MDN Tensorflow implementation</a> to 1) work in TF2.0, and 2) to sample from it in the browser with TFJS</li>
+                    <li>Created a larger trained model, by first sub-training smaller parts, then combining them later</li>
+                </ul>
+                <p>
+                    The <a href="https://github.com/andySigler/ml-experiments/tree/master/experiments/3/src">source code for this webpage can be found here</a>, which includes the inference model, training playback, and MDN sampling functions. In addition, the <a href="https://github.com/andySigler/ml-experiments/tree/master/experiments/3/python">Python notebook I used for training can be found here</a>.
+                </p>
+            </div>
             <div id="mdn" hidden="true">
                 <h2>Model Playback</h2>
+                <ol>
+                    <li>Press the "Predict" model, and it will start drawing</li>
+                    <li>Once it hits the edge of the canvas, it will stop drawing</li>
+                </ol>
+                <p>
+                    ... looks like a mess, right?
+                </p>
                 <div>
                     <button id="startMDNButton" disabled="true">Predict</button>
                     <button id="stopMDNButton" disabled="true">Stop</button>
-                    Temp<input type="text" id="tempInput" value="1.0">
-                    Sigma-Temp<input type="text" id="sigmaTempInput" value="0.02">
+                    <span hidden="true">Temp<input type="text" id="tempInput" value="1.0"></span>
+                    <span hidden="true">Sigma-Temp<input type="text" id="sigmaTempInput" value="0.02"></span>
                 </div>
                 <div id="canvasParent"></div>
             </div>
-<!--             <div id="simpleRNN" hidden="true">
-                <h2>Simple RNN</h2>
-                <div>
-                    <button id="startModelButton" disabled="true">Predict</button>
-                    <button id="stopModelButton" disabled="true">Stop</button>
-                </div>
-                <div id="canvasParent"></div>
-            </div> -->
             <div>
                 <h2>The Goal</h2>
                 <p>
@@ -48,6 +61,15 @@
                 </p>
                 <p>
                     I've made small programs in the past that try to achieve this programmatically, however it always looked a little too robotic.
+                </p>
+            </div>
+            <div>
+                <h2>Did It Work?</h2>
+                <p>
+                    Not really, but I can say that after working on this model for a couple weeks, I learned quite a lot about how to make it work better.
+                </p>
+                <p>
+                    I think one major thing that could have make it better was using training drawings that are <strong>NOT</strong> just my random doodles. Random doodles are hard for me (a human) to tell apart from just noise when a ML model is generating them...
                 </p>
             </div>
             <div>
@@ -78,17 +100,17 @@
                         <li>
                             Compress total points, to keep same shape with less data
                             <ul>
-                                <li style="margin-top: 5px">This allowed me to keep the final model as small as possible, while still being able to generate recognizable shapes</li>
+                                <li>This allowed me to keep the final model as small as possible, while still being able to generate recognizable shapes</li>
                             </ul>
                         </li>
-                        <li style="margin-top: 5px">
+                        <li>
                             Synthetically create new drawings (more data!), through:
                             <ul>
-                                <li style="margin-top: 5px">Rotating each drawing four times at 90 degrees</li>
-                                <li style="margin-top: 5px">Scaling each drawing down in size and transposing</li>
+                                <li>Rotating each drawing four times at 90 degrees</li>
+                                <li>Scaling each drawing down in size and transposing</li>
                             </ul>
                         </li>
-                        <li style="margin-top: 5px">
+                        <li>
                             Creating training X/Y pairs, for both the simple autoencoders, and the RNN models
                         </li>
                     </ol>
@@ -108,20 +130,7 @@
                     <img src="./img/doodle_model_diagram.jpg">
                 </div>
             </div>
-            <div>
-                <h2>Did It Work?</h2>
-                <p>
-                    Not really, but I can say that after working on this model for a couple weeks, I learned quite a lot about how to make it work better.
-                </p>
-                <p>
-                    I think some things that could make it better are:
-                    <ul>
-                        <li>Using training drawings that are <strong>NOT</strong> just my random doodles. Random doodles are hard for me (a human) to tell apart from just noise when a ML model is generating them...</li>
-                        <li>More training time. After I was about to give up, I found that if I simply train the final MDN-RNN network longs, it started looking better</li>
-                    </ul>
-                </p>
-                <br><br><br>
-            </div>
+            <br><br><br>
         </div>
     </body>
 </html>

@@ -23,7 +23,7 @@ const splitMixtureParams = (params, outputDim, numMixes) => {
   const totalGaussians = numMixes * outputDim
   const mus = params.slice(0, totalGaussians)
   const sigs = params.slice(totalGaussians, totalGaussians * 2)
-  const piLogits = params.slice(totalGaussians * 2)
+  const piLogits = params.slice(params.length - numMixes)
   return [mus, sigs, piLogits]
 }
 
@@ -59,7 +59,8 @@ const sampleFromCategorical = (dist) => {
   Returns:
   One sample from the categorical model
   */
-  const r = Math.random()
+  // const r = Math.random()
+  const r = 0.5
   let accumulate = 0
   for (let i = 0; i < dist.length; i++) {
     accumulate += dist[i]
@@ -84,6 +85,7 @@ const createIdentityMatrix = (n, valArray) => {
   Returns:
   2d array, representing an identity matrix
   */
+
   const retVal = []
   for (let x = 0; x < n; x++) {
     retVal.push([])
@@ -119,7 +121,6 @@ const sampleMDNOutput = (params, outputDim, numMixes, temp = 1.0, sigmaTemp = 1.
   Returns:
   One sample from the the mixture model
   */
-  const test = new MDNSigmasActivation() // eslint-disable-line no-unused-vars
   const [mus, sigs, piLogits] = splitMixtureParams(params, outputDim, numMixes)
   const pis = softmax(piLogits, temp)
   const m = sampleFromCategorical(pis)
@@ -171,17 +172,20 @@ const getRandomSeed = (drawingsArray) => {
   // find a drawing that is long enough
   let randomDrawingIndex = Math.floor((Math.random() * drawingsArray.length))
   const neededSamples = (mdnSampleLen * mdnSeqLen) + 1
-  while (drawingsArray[randomDrawingIndex].length <= neededSamples) {
+  while (drawingsArray[randomDrawingIndex].length <= neededSamples + mdnSampleLen) {
     randomDrawingIndex = Math.floor((Math.random() * drawingsArray.length))
   }
   const drawing = drawingsArray[randomDrawingIndex]
   // pick a random start point within that drawing
   const randomSequenceIndex = Math.floor(
-    (Math.random() * (drawing.length - neededSamples))
+    (Math.random() * (drawing.length - (neededSamples + mdnSampleLen)))
   )
-  const points = drawing.slice(
+  const x = drawing.slice(
     randomSequenceIndex, randomSequenceIndex + neededSamples)
-  return points
+  const y = drawing.slice(
+    randomSequenceIndex + neededSamples,
+    randomSequenceIndex + neededSamples + mdnSampleLen)
+  return { x: x, y: y }
 }
 
 const pointsToMDNInput = (points) => {
@@ -236,7 +240,11 @@ const mdnOutputToPoints = outputArray => {
 }
 
 const predictMDN = (model, seed, temp, sigmaTemp) => {
+  // console.log(`Predicting with temp=${temp} sigma=${sigmaTemp}`)
   return tf.tidy(() => {
+    if (!Array.isArray(seed)) {
+      seed = seed.arraySync()
+    }
     const seedTensor = tf.tensor3d(
       [seed], [1, mdnSeqLen, mdnSampleLen * 4], 'float32')
     const guess = model.predict(seedTensor)
@@ -247,9 +255,10 @@ const predictMDN = (model, seed, temp, sigmaTemp) => {
   })
 }
 
-const drawLineAtIndex = (s, i, pointArray, color = 'black') => {
+const drawLineAtIndex = (s, i, pointArray, color = 'black', opacity = 10) => {
   const prev = pointArray[i - 1]
   const curr = pointArray[i]
+  clearCanvas(s, 255, opacity) // include low opacity, so old points fade away
   drawLineRelative(s, prev.x, prev.y, curr.x, curr.y, color)
   if (curr.x < 0 || curr.x > 1 || curr.y < 0 || curr.y > 1) {
     return false
@@ -291,6 +300,7 @@ const createButtonEvents = (s, parentNode, datasetArray, model) => {
       tempInput.disabled = false
       sigmaTempInput.disabled = false
       currentlyDrawing = false
+      startButton.disabled = false
     }
   }
   const startButtonEvent = () => {
@@ -298,6 +308,7 @@ const createButtonEvents = (s, parentNode, datasetArray, model) => {
     const sigmaTemp = sigmaTempInput.value
     tempInput.disabled = true
     sigmaTempInput.disabled = true
+    startButton.disabled = true
 
     const predictNextSequence = async (seed) => {
       const mdnOutput = predictMDN(model, seed, temp, sigmaTemp)
@@ -318,7 +329,7 @@ const createButtonEvents = (s, parentNode, datasetArray, model) => {
       currentlyDrawing = true
       clearCanvas(s)
       const randomPoints = getRandomSeed(datasetArray)
-      const mdnInput = pointsToMDNInput(randomPoints)
+      const mdnInput = pointsToMDNInput(randomPoints.x)
       predictNextSequence(mdnInput)
     }
     // trigger

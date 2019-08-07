@@ -42,6 +42,15 @@ const createButtonEvents = (s, parentNode, datasetArray) => {
   stopButton.addEventListener('click', stopButtonEvent)
   startButton.disabled = false
   stopButton.disabled = false
+
+  // fill the canvas with a single drawing
+  clearCanvas(s)
+  const drawIndex = Math.floor(Math.random() * datasetArray.length)
+  const dataArray = datasetArray[drawIndex]
+  for (let i = 1; i < dataArray.length; i++) {
+    const [prev, curr] = [dataArray[i - 1], dataArray[i]]
+    drawLineRelative(s, prev.x, prev.y, curr.x, curr.y)
+  }
 }
 
 export const setupDataPlayback = (datasetArray) => {

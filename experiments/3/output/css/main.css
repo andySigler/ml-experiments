@@ -1,20 +1,25 @@
 body, html , p{
     font-family: Helvetica;
-    font-size:14px;
+    font-size:16px;
 }
 img {
     max-width: 100%;
+    border: 1px solid black;
+    border-radius: 5px;
 }
 a {
     color: #10bf9b;
 }
 button {
-    font-size: 200%;
+    font-size: 150%;
 }
 input {
     max-width: 40px;
     margin-left:3px;
-    margin-right: 10px
+    margin-right: 10px;
+}
+li {
+    margin-top: 5px;
 }
 .container {
     max-width: 600px;

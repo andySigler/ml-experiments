@@ -17,8 +17,8 @@ export const drawLineRelative = (s, x1, y1, x2, y2, color) => {
   drawLine(s, x1 * s.width, y1 * s.height, x2 * s.width, y2 * s.height, color)
 }
 
-export const clearCanvas = (s) => {
-  s.background(255)
+export const clearCanvas = (s, color = 255, opacity = 255) => {
+  s.background(color, color, color, opacity)
 }
 
 export const createDrawingEvents = (s, canvas, onStoppedDrawing, onNewPoint) => {
