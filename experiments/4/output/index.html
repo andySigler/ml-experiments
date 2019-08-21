@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <link type="text/css" rel="stylesheet" href="./css/main.css">
+        <script type="text/javascript" src="./main.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>ML-Experiment: Simpsons Morphs</h1>
+            <div>
+                <p>
+                    For this small project, I wanted to focus on hyper-parameter tuning. As I've been teaching myself Tensorflow, I've been building models based on what I've seen in tutorials, but I've never actually analyzed how my hyper-parameters were affecting the model's performance.
+                </p>
+                <p>
+                    This experiment uses a basic convolutional autoencoder for performing principle component analysis on images of The Simpsons faces. However, instead of guessing hyper-parameters and then overfitting, I build some methods for iteratively training with different parameters, and analyzing the results on validation data.
+                </p>
+                <p>
+                    The <a href="https://github.com/andysigler/ml-experiments">Python notebook for training can be found here</a>, and the <a href="https://github.com/andysigler/ml-experiments">source for model inference on this webpage can be found here</a>.
+                </p>
+            </div>
+            <div>
+                <button id="loopButton" disabled="true"></button>
+                <span id="message" style="margin-left: 10px">Loading...</span>
+                <div id="facesDiv" style="margin-top: 10px"></div>
+            </div>
+            <br><br><br>
+        </div>
+    </body>
+</html>
