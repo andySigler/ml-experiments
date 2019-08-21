@@ -8,21 +8,51 @@
     <body>
         <div class="container">
             <h1>ML-Experiment: Simpsons Morphs</h1>
+            <p>
+                This experiment uses a convolutional autoencoder for performing principle component analysis on images of The Simpsons faces.
+            </p>
+            <p>
+                Source code can be found here:
+                <ul>
+                    <li><a href="https://github.com/andySigler/ml-experiments/blob/master/experiments/4/python/simpsons_gen.ipynb">Python Notebook for training</a></li>
+                    <li><a href="https://github.com/andySigler/ml-experiments/tree/master/experiments/4/src">JS for browser inference</a></li>
+                </ul>
+            </p>
             <div>
+                <h2>Visualize</h2>
                 <p>
-                    For this small project, I wanted to focus on hyper-parameter tuning. As I've been teaching myself Tensorflow, I've been building models based on what I've seen in tutorials, but I've never actually analyzed how my hyper-parameters were affecting the model's performance.
+                    Tensorflow is pretty intensive while predicting, so your browser might seem like it's freezing during prediction.
                 </p>
                 <p>
-                    This experiment uses a basic convolutional autoencoder for performing principle component analysis on images of The Simpsons faces. However, instead of guessing hyper-parameters and then overfitting, I build some methods for iteratively training with different parameters, and analyzing the results on validation data.
+                    Press the button to start/stop the visualization (even if it seems frozen, it can tell you clicked it).
                 </p>
-                <p>
-                    The <a href="https://github.com/andysigler/ml-experiments">Python notebook for training can be found here</a>, and the <a href="https://github.com/andysigler/ml-experiments">source for model inference on this webpage can be found here</a>.
-                </p>
-            </div>
-            <div>
                 <button id="loopButton" disabled="true"></button>
                 <span id="message" style="margin-left: 10px">Loading...</span>
                 <div id="facesDiv" style="margin-top: 10px"></div>
+            </div>
+            <div>
+                <h2>Hyper-Parameters</h2>
+                <p>
+                    This time, I wanted to focus on hyper-parameter tuning. Instead of guessing hyper-parameters and then overfitting, instead I built methods for iteratively training different parameters, and then analyzing the results on validation data.
+                </p>
+                <img src="./img/latent-units-graph.png">
+                <p>
+                    The image above shows the validation-loss between models with varying numbers of latent dimensions. Graphs like these were what helped me determine model parameters:
+                    <ul>
+                        <li>Number of convolutional layers</li>
+                        <li>Number of convolutional filters per each layer</li>
+                        <li>Dimensionality of latent space</li>
+                        <li>Training batch size</li>
+                        <li>Training learning rate</li>
+                    </ul>
+                </p>
+                <p>
+                    In the image below, the original drawing is on top, and the autoencoder's output is on bottom.
+                </p>
+                <img src="./img/faces-grid.png">
+                <p>
+                    Because I focused on the validation loss, and didn't overfit, the final renderings are not as clear as I would want. To solve this, I believe I would simply need <strong>more data</strong>
+                </p>
             </div>
             <br><br><br>
         </div>
