@@ -1,0 +1,10 @@
+tensorflow
+tfp-nightly
+tf-agents-nightly
+pybullet
+gym==0.12.5
+pyvirtualdisplay
+pyglet==1.3.2
+PILLOW
+imageio==2.4.0
+matplotlib
