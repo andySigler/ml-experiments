@@ -11,6 +11,7 @@ const clearCanvas = (sketch, color = 255, opacity = 255) => {
 export const getImagePixels = (sketch, imageIndex, onFinish) => {
   sketch.loadImage(getPNGPath(imageIndex), img => {
     img.loadPixels()
+    sketch.loadPixels()
     onFinish(img.pixels)
   })
 }
@@ -72,9 +73,11 @@ export const drawPredictedFrames = (sketch, pixelsArray, onFinish) => {
 
 export const setupCanvas = (parentName, width, height, faceIndex, onFinish) => {
   new P5((sketch) => { // eslint-disable-line no-new
+    sketch.pixelDensity(1)
     sketch.setup = () => { // will be called automatically
       sketch.noLoop()
       const canvas = sketch.createCanvas(width, height)
+      sketch.loadPixels()
       canvas.parent(parentName)
       clearCanvas(sketch)
       getImagePixels(sketch, faceIndex, pixels => {
